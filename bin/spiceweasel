@@ -82,6 +82,7 @@ else
   STDOUT.puts "DEBUG: file input: #{input}" if Spiceweasel::DEBUG
 end
 
+pre_create = String.new()
 create = String.new()
 delete = String.new()
 
@@ -90,6 +91,8 @@ environment_list = Spiceweasel::EnvironmentList.new(input['environments'], cookb
 role_list = Spiceweasel::RoleList.new(input['roles'], environment_list, cookbook_list, options)
 data_bag_list = Spiceweasel::DataBagList.new(input['data bags'], options)
 node_list = Spiceweasel::NodeList.new(input['nodes'], cookbook_list, environment_list, role_list, options)
+
+pre_create += node_list.pre_create
 
 create += cookbook_list.create
 create += environment_list.create
@@ -109,6 +112,7 @@ if cli.config[:delete]
   puts delete unless delete.empty?
 elsif cli.config[:rebuild]
   puts delete unless delete.empty?
+  puts pre_create unless pre_create.empty?
   puts create unless create.empty?
 else
   if Spiceweasel::EXTRACTJSON
@@ -116,6 +120,7 @@ else
   elsif Spiceweasel::EXTRACTYAML
     puts input.to_yaml
   else
+    puts pre_create unless pre_create.empty?
     puts create unless create.empty?
   end
 end

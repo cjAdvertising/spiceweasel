@@ -1,6 +1,6 @@
 class Spiceweasel::NodeList
   def initialize(nodes, cookbooks, environments, roles, options = {})
-    @create = @delete = ''
+    @create = @delete = @pre_create = ''
     if nodes
       nodes.each do |node|
         nname = node.keys[0]
@@ -34,6 +34,15 @@ class Spiceweasel::NodeList
             end
           end
           @delete += "knife node#{options['knife_options']} list | xargs knife #{provider[0]} server delete -y\n"
+        elsif nname.start_with?("server_") #knife-server bootstrap support
+          pieces = nname.split()
+          provider = pieces.first.split('_').last
+          server = pieces.last
+          @pre_create += "knife server#{options['knife_options']} bootstrap #{provider} #{noptions}\n"
+          if run_list.length > 0
+            @create += "knife node run_list add #{server} '#{run_list}'\n"
+          end
+          @delete += "knife node #{options['knife_options']}delete #{server} -y\n"
         elsif nname.start_with?("windows") #windows node bootstrap support
           nodeline = nname.split()
           provider = nodeline.shift.split('_') #split on 'windows_ssh' etc
@@ -50,6 +59,10 @@ class Spiceweasel::NodeList
             @create += "knife bootstrap#{options['knife_options']} #{server} #{noptions}".gsub(/\{\{n\}\}/, (i + 1).to_s)
             if run_list.length > 0
               @create += " -r '#{run_list}'\n"
+            end
+            # Pull node name from options if given, since `server` will refer to FQDN otherwise.
+            unless (m = noptions.match(/-N\s['"]?(\S+)['"]?/)).nil?
+              server = m[1]
             end
             @delete += "knife node#{options['knife_options']} delete #{server} -y\n"
           end
@@ -94,5 +107,5 @@ class Spiceweasel::NodeList
     end
   end
 
-  attr_reader :create, :delete
+  attr_reader :pre_create, :create, :delete
 end
